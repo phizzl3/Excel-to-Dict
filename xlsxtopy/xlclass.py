@@ -539,7 +539,7 @@ class Xlsx:
         data = {}
         try:
             for row, cell in enumerate(self.ws[keycol.upper()], 1):
-                if row >= datastartrow:
+                if row >= datastartrow and cell.value:
                     data[cell.value] = {
                         self.ws[f'{each.upper()}{hdrrow}'].value: self.ws[f'{each.upper()}{row}'].value for each in datacols}
 
