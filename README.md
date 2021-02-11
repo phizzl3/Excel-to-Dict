@@ -15,5 +15,5 @@ $ pip install -r requirements.txt
 ## Run
 
  ```bash
- $ python3 exceltodict
+ $ python3 xlsxtopy
 ```
