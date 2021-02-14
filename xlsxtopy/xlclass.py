@@ -1,10 +1,11 @@
-# 01.27.2021 - MODIFIED
+# 02.13.2021
 """
 Class for working with *.xlsx files using the Openpyxl module. 
 """
 
 
 import csv
+import datetime
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill
@@ -503,48 +504,80 @@ class Xlsx:
 
         return self
 
-    def save(self, savepath) -> None:
+    def save(self, savepath=None) -> None:
         """
         Duplicates openpyxl's save function so it can be called on the object 
-        without needing the .wb attribute. Saves the Excel file to the specified 
-        filepath or Path location. ex: 'C:\files\MyFile.xlxs'
+        without needing the .wb attribute, etc. Saves the Excel file to the specified 
+        filepath or Path location if passed. If no filepath is passed, uses the 
+        original file's Path (.path attr) to save over the original.
 
         Args:
-            savepath (str or pathlib.Path): Output file location (including filename) 
-                     for your output file.
+            savepath (str or pathlib.Path, optional): Output file location (including filename) 
+                     for your output file. Uses original if not specified. Defaults to None.
         """
         try:
-            self.wb.save(savepath)
+            if savepath:
+                self.wb.save(savepath)
+            elif self.path:
+                self.wb.save(self.path)
+            else:
+                input("\n No savepath found...")
 
         except Exception as e:
             print(f"\nError - save: {e}")
             input("[ENTER] to continue...")
 
-    def generate_dictionary(self, keycol, datacols, hdrrow=1, datastartrow=2) -> dict:
+    def generate_dictionary(self, datacols, keycol=None, hdrrow=1, datastartrow=None) -> dict:
         """
-        Read the headers and cells from the spreadsheet and use them to generate
+        Reads the headers and cells from the spreadsheet and usees them to generate
         a dictionary of the data. Data listed in *keycol* on spreadsheet will need to be 
         a series of unique values to be used as keys or the information assigned will be 
-        overwritten each time a duplicate key is found.
+        overwritten each time a duplicate key is found. If *keycol* is not specified, a 
+        4-digit string of the row number is used for each key. ex: '0005'
 
         Args:
-            keycol (str): Column letter where the data that will be used as the dictionary keys is located.
             datacols (list): List of string column letters where needed data is located.
+            keycol (str, optional): Column letter where the data that will be used as the 
+                dictionary keys is located. If not passed, 4-digit string of the row numbers 
+                will be used instead. Defaults to None.
             hdrrow (int, optional) Row number containing the headers in the spreadsheet. Defaults to 1.
-            datastartrow (int, optional) Row number where the needed data starts. Defaults to 2.
+            datastartrow (int, optional) Row number where the needed data starts. 
+                If not specified, data will be read from header row + 1. Defaults to None.
 
         Returns:
-            dict: Dictionary generated from the data in the spreadsheet.
+            dict: Dictionary generated from the data in the spreadsheet. {key: {header: value}}
         """
         data = {}
+        keycolumn = keycol if keycol else 'A'
+        datastart = hdrrow + 1 if not datastartrow else datastartrow
         try:
-            for row, cell in enumerate(self.ws[keycol.upper()], 1):
-                if row >= datastartrow and cell.value:
-                    data[cell.value] = {
-                        self.ws[f'{each.upper()}{hdrrow}'].value: self.ws[f'{each.upper()}{row}'].value for each in datacols}
+            for row, cell in enumerate(self.ws[keycolumn.upper()], 1):
+                keys = cell.value if keycol else f"{row:0>4}"
+                if row >= datastart and keys:
+                    data[keys] = {
+                        self.ws[f'{ea.upper()}{hdrrow}'].value: self.ws[f'{ea.upper()}{row}'].value for ea in datacols}
 
             return data
 
         except Exception as e:
             print(f"\nError - generate_dictionary: {e}")
             input("[ENTER] to continue...")
+
+    def generate_list(self, startrow=1, stoprow=None) -> list:
+        """
+        Generates a list of lists containing all cell values from startrow to stoprow (inclusive).
+        (Use _list.pop(0) on returned list to get a separate headers list if present/needed.)
+
+        Args:
+            startrow (int, optional): First row to pull data from to generate the list. Defaults to 1.
+            stoprow (int, optional): Last row to pull data from to generate the list. 
+                    If no value is passed, it will pull data from all rows after startrow. Defaults to None.
+
+        Returns:
+            list: List of lists containing the values read from the cells.
+        """
+        row_data = []
+        for row in self.ws.iter_rows(min_row=startrow, max_row=stoprow):
+            row_data.append([cell.value for cell in row])
+
+        return row_data
